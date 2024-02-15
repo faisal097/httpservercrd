@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- httpserver_v1alpha1_empmanager.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

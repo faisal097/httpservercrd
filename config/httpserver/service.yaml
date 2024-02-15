@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: httpserver01
+  name: httpserver-svc
+  namespace: default
+spec:
+  ports:
+  - name: http
+    nodePort: 30950
+    port: 3333
+    protocol: TCP
+    targetPort: http
+  selector:
+    app.kubernetes.io/instance: httpserver01
+  sessionAffinity: None
+  type: NodePort
