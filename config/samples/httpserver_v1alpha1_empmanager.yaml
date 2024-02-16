@@ -7,8 +7,8 @@ metadata:
   name: empmanager01
 spec:
   name: empmanager01
-  image: ""
-  replicas: 1
+  image: faisal0097/experiments:1.0.1
+  replicas: 2
   spec: |
     kind: Namespace
     apiVersion: v1

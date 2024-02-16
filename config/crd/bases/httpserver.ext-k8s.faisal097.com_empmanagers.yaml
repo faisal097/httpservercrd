@@ -48,6 +48,7 @@ spec:
                 type: string
               replicas:
                 description: Replicas needed for the server instances
+                format: int32
                 type: integer
               spec:
                 description: Spec contains the namespace/deployement/service as yaml

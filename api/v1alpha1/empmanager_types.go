@@ -39,7 +39,7 @@ type EmpManagerSpec struct {
 	Name string `json:"name"`
 
 	// Replicas needed for the server instances
-	Replicas int `json:"replicas"`
+	Replicas int32 `json:"replicas"`
 
 	// Image needed for the server instances
 	Image string `json:"image"`
