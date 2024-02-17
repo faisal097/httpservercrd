@@ -84,12 +84,12 @@ func (r *EmpManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		switch t := obj.(type) {
 		case *appsV1.Deployment:
 			desiredDeploy = t
-			log.Info(fmt.Sprintf("Deployment found: %s", stringify(ctx, t)))
+			//log.Info(fmt.Sprintf("Deployment found: %s", stringify(ctx, t)))
 		case *v1.Service:
 			desiredService = t
-			log.Info(fmt.Sprintf("Service found: %s", stringify(ctx, t)))
+			//log.Info(fmt.Sprintf("Service found: %s", stringify(ctx, t)))
 		case *v1.Namespace:
-			log.Info(fmt.Sprintf("Namespace found: %s", stringify(ctx, t)))
+			//log.Info(fmt.Sprintf("Namespace found: %s", stringify(ctx, t)))
 		default:
 			log.Info(fmt.Sprintf("UnIdentified type: %s", stringify(ctx, t)))
 		}
@@ -127,6 +127,8 @@ func (r *EmpManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	log.Info("resource status updated to CREATED_STATE")
+
 	return ctrl.Result{}, nil
 }
 
@@ -134,6 +136,8 @@ func (r *EmpManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *EmpManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&httpserverv1alpha1.EmpManager{}).
+		Owns(&appsV1.Deployment{}). //Watch for create resouces by CRD i.e deployment and service
+		Owns(&v1.Service{}).
 		Complete(r)
 }
 
