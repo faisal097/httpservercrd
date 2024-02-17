@@ -31,3 +31,10 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - httpserver.ext-k8s.faisal097.com
+  resources:
+  - events
+  verbs:
+  - create
+  - patch

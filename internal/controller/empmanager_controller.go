@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -38,12 +39,14 @@ import (
 // EmpManagerReconciler reconciles a EmpManager object
 type EmpManagerReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 //+kubebuilder:rbac:groups=httpserver.ext-k8s.faisal097.com,resources=empmanagers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=httpserver.ext-k8s.faisal097.com,resources=empmanagers/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=httpserver.ext-k8s.faisal097.com,resources=empmanagers/finalizers,verbs=update
+//+kubebuilder:rbac:groups="httpserver.ext-k8s.faisal097.com",resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -57,6 +60,9 @@ type EmpManagerReconciler struct {
 func (r *EmpManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	instance := &httpserverv1alpha1.EmpManager{}
+
+	resNameSpace := req.NamespacedName.Namespace
+	resName := req.NamespacedName.Name
 
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
@@ -74,6 +80,7 @@ func (r *EmpManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			log.Error(err, "unable to update resource status to PENDING_STATE")
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
+		r.Recorder.Event(instance, "Normal", "Updated", fmt.Sprintf("Updated resourse state to PENDING_STATE %s/%s", resNameSpace, resName))
 	}
 
 	specBytes := []byte(instance.Spec.Spec)
@@ -104,7 +111,7 @@ func (r *EmpManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return reconcile.Result{}, err
 	}
 
-	if result, err := r.reconcileDeployment(ctx, req, desiredDeploy); err != nil {
+	if result, err := r.reconcileDeployment(ctx, instance, req, desiredDeploy); err != nil {
 		return result, err
 	}
 
@@ -116,7 +123,7 @@ func (r *EmpManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return reconcile.Result{}, err
 	}
 
-	if result, err := r.reconcileService(ctx, req, desiredService); err != nil {
+	if result, err := r.reconcileService(ctx, instance, req, desiredService); err != nil {
 		return result, err
 	}
 	log.Info("Service is upto date")
@@ -128,6 +135,7 @@ func (r *EmpManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	log.Info("resource status updated to CREATED_STATE")
+	r.Recorder.Event(instance, "Normal", "Updated", fmt.Sprintf("Updated resourse state to CREATED_STATE %s/%s", resNameSpace, resName))
 
 	return ctrl.Result{}, nil
 }
@@ -141,7 +149,7 @@ func (r *EmpManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *EmpManagerReconciler) reconcileDeployment(ctx context.Context, req ctrl.Request, desiredDeploy *appsV1.Deployment) (ctrl.Result, error) {
+func (r *EmpManagerReconciler) reconcileDeployment(ctx context.Context, instance *httpserverv1alpha1.EmpManager, req ctrl.Request, desiredDeploy *appsV1.Deployment) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
 	foundDeploy := &appsV1.Deployment{}
@@ -156,6 +164,7 @@ func (r *EmpManagerReconciler) reconcileDeployment(ctx context.Context, req ctrl
 			log.Error(err, fmt.Sprintf("Error in creating deployment %s/%s", desiredDeploy.Namespace, desiredDeploy.Name))
 			return reconcile.Result{}, err
 		}
+		r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created deployment %s/%s", desiredDeploy.Namespace, desiredDeploy.Name))
 	} else if err != nil {
 		log.Error(err, fmt.Sprintf("Error in get deployment %s/%s", desiredDeploy.Namespace, desiredDeploy.Name))
 		return reconcile.Result{}, err
@@ -169,12 +178,13 @@ func (r *EmpManagerReconciler) reconcileDeployment(ctx context.Context, req ctrl
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		r.Recorder.Event(instance, "Normal", "Updated", fmt.Sprintf("Updated deployment %s/%s", desiredDeploy.Namespace, desiredDeploy.Name))
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *EmpManagerReconciler) reconcileService(ctx context.Context, req ctrl.Request, desiredService *v1.Service) (ctrl.Result, error) {
+func (r *EmpManagerReconciler) reconcileService(ctx context.Context, instance *httpserverv1alpha1.EmpManager, req ctrl.Request, desiredService *v1.Service) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
 	foundDeploy := &v1.Service{}
@@ -189,6 +199,7 @@ func (r *EmpManagerReconciler) reconcileService(ctx context.Context, req ctrl.Re
 			log.Error(err, fmt.Sprintf("Error in creating Service %s/%s", desiredService.Namespace, desiredService.Name))
 			return reconcile.Result{}, err
 		}
+		r.Recorder.Event(instance, "Normal", "Created", fmt.Sprintf("Created service %s/%s", desiredService.Namespace, desiredService.Name))
 	} else if err != nil {
 		log.Error(err, fmt.Sprintf("Error in get Service %s/%s", desiredService.Namespace, desiredService.Name))
 		return reconcile.Result{}, err
@@ -202,6 +213,7 @@ func (r *EmpManagerReconciler) reconcileService(ctx context.Context, req ctrl.Re
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		r.Recorder.Event(instance, "Normal", "Updated", fmt.Sprintf("Updated service %s/%s", desiredService.Namespace, desiredService.Name))
 	}
 	return ctrl.Result{}, nil
 }
